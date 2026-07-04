@@ -82,25 +82,14 @@ export default function Dashboard() {
 
       if (ownedError) throw ownedError
 
-      const { data: sharedAccess, error: sharedError } = await supabase
+      const { data: memberBoards, error: memberError } = await supabase
         .from('board_members')
-        .select('board_id')
+        .select('boards(*)')
         .eq('user_id', session.user.id)
 
-      if (sharedError) throw sharedError
+      if (memberError) throw memberError
 
-      let sharedBoards = []
-      if (sharedAccess && sharedAccess.length > 0) {
-        const sharedIds = sharedAccess.map(s => s.board_id)
-        const { data: shared, error: fetchSharedError } = await supabase
-          .from('boards')
-          .select('*')
-          .in('id', sharedIds)
-          .order('created_at', { ascending: false })
-
-        if (fetchSharedError) throw fetchSharedError
-        sharedBoards = shared || []
-      }
+      const sharedBoards = memberBoards?.map(m => m.boards).filter(Boolean) || []
 
       const allBoards = [...(ownedBoards || []), ...sharedBoards]
       const uniqueBoards = allBoards.filter((board, index, self) =>
@@ -209,7 +198,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#3b82f6] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-4 border-[#0ea5e9] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-white text-lg">Loading your boards...</p>
         </div>
       </div>
@@ -222,7 +211,7 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#3b82f6] rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-[#0ea5e9] rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                 </svg>
@@ -258,7 +247,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#3b82f6] hover:bg-blue-600 text-white font-medium rounded-lg transition-colors shadow-lg shadow-blue-500/25"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#0ea5e9] hover:bg-sky-600 text-white font-medium rounded-lg transition-colors shadow-lg shadow-sky-500/25"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -270,3 +259,62 @@ export default function Dashboard() {
         {boards.length > 0 && (
           <div className="mb-6">
             <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search boards..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9] focus:border-transparent"
+              />
+            </div>
+          </div>
+        )}
+
+        {filteredBoards.length === 0 && !loading && (
+          <div className="text-center py-16">
+            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {searchQuery ? 'No boards found' : 'No boards yet'}
+            </h3>
+            <p className="text-slate-400 mb-6">
+              {searchQuery ? 'Try a different search term' : 'Create your first board to get started'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#0ea5e9] hover:bg-sky-600 text-white font-medium rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Your First Board
+              </button>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredBoards.map((board) => (
+            <div
+              key={board.id}
+              className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden hover:border-[#0ea5e9] transition-all hover:shadow-lg hover:shadow-[#0ea5e9]/10"
+            >
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white truncate flex-1 mr-2">
+                    {board.name}
+                  </h3>
+                  {board.owner_id === user?.id && (
+                    <button
+                      onClick={() => setDeleteConfirm(board.id)}
+                      className="text-slate-400 hover:text-red-400 transition-colors"
+                      title="Delete board"
+                    >
+                
