@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 import {
   DndContext,
   DragOverlay,
@@ -52,7 +52,7 @@ function SortableCard({ card, onEdit, onDelete }) {
               e.stopPropagation()
               onEdit(card)
             }}
-            className="text-slate-400 hover:text-[#3b82f6] p-1"
+            className="text-slate-400 hover:text-[#0ea5e9] p-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -80,7 +80,7 @@ function SortableCard({ card, onEdit, onDelete }) {
 
 function CardOverlay({ card }) {
   return (
-    <div className="bg-slate-700 p-3 rounded-lg shadow-xl border-2 border-[#3b82f6]">
+    <div className="bg-slate-700 p-3 rounded-lg shadow-xl border-2 border-[#0ea5e9]">
       <h4 className="text-white font-medium text-sm">{card.title}</h4>
       {card.description && (
         <p className="text-slate-400 text-xs mt-2 line-clamp-2">{card.description}</p>
@@ -109,7 +109,7 @@ function DroppableColumn({ column, cards, onAddCard, onEditCard, onDeleteCard, o
     <div
       ref={setNodeRef}
       className={`bg-slate-800 rounded-xl p-4 min-w-[280px] max-w-[280px] flex flex-col max-h-[calc(100vh-200px)] transition-colors ${
-        isOver ? 'ring-2 ring-[#3b82f6]' : ''
+        isOver ? 'ring-2 ring-[#0ea5e9]' : ''
       }`}
     >
       <div className="flex justify-between items-center mb-4">
@@ -117,7 +117,7 @@ function DroppableColumn({ column, cards, onAddCard, onEditCard, onDeleteCard, o
         <div className="flex gap-1">
           <button
             onClick={() => onEditColumn(column)}
-            className="text-slate-400 hover:text-[#3b82f6] p-1"
+            className="text-slate-400 hover:text-[#0ea5e9] p-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -154,7 +154,7 @@ function DroppableColumn({ column, cards, onAddCard, onEditCard, onDeleteCard, o
             value={newCardTitle}
             onChange={(e) => setNewCardTitle(e.target.value)}
             placeholder="Card title..."
-            className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#3b82f6]"
+            className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAddCard()
@@ -167,7 +167,7 @@ function DroppableColumn({ column, cards, onAddCard, onEditCard, onDeleteCard, o
           <div className="flex gap-2">
             <button
               onClick={handleAddCard}
-              className="flex-1 bg-[#3b82f6] hover:bg-blue-600 text-white py-1.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex-1 bg-[#0ea5e9] hover:bg-sky-600 text-white py-1.5 rounded-lg text-sm font-medium transition-colors"
             >
               Add
             </button>
@@ -217,6 +217,9 @@ export default function BoardView() {
   const [editCardDescription, setEditCardDescription] = useState('')
   const [editColumnTitle, setEditColumnTitle] = useState('')
 
+  const columnsChannelRef = useRef(null)
+  const cardsChannelRef = useRef(null)
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -248,4 +251,108 @@ export default function BoardView() {
       if (columnsError) throw columnsError
       setColumns(columnsData || [])
 
-      const { data: cardsData, error: cards
+      const { data: cardsData, error: cardsError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('board_id', boardId)
+        .order('position')
+
+      if (cardsError) throw cardsError
+      setCards(cardsData || [])
+
+      setLoading(false)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }, [boardId])
+
+  useEffect(() => {
+    fetchBoardData()
+
+    columnsChannelRef.current = supabase
+      .channel(`columns:board_id=eq.${boardId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'columns',
+          filter: `board_id=eq.${boardId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setColumns((prev) => [...prev, payload.new].sort((a, b) => a.position - b.position))
+          } else if (payload.eventType === 'UPDATE') {
+            setColumns((prev) =>
+              prev.map((col) => (col.id === payload.new.id ? payload.new : col)).sort((a, b) => a.position - b.position)
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setColumns((prev) => prev.filter((col) => col.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    cardsChannelRef.current = supabase
+      .channel(`cards:board_id=eq.${boardId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cards',
+          filter: `board_id=eq.${boardId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setCards((prev) => [...prev, payload.new].sort((a, b) => a.position - b.position))
+          } else if (payload.eventType === 'UPDATE') {
+            setCards((prev) =>
+              prev.map((card) => (card.id === payload.new.id ? payload.new : card)).sort((a, b) => a.position - b.position)
+            )
+          } else if (payload.eventType === 'DELETE') {
+            setCards((prev) => prev.filter((card) => card.id !== payload.old.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      if (columnsChannelRef.current) {
+        supabase.removeChannel(columnsChannelRef.current)
+      }
+      if (cardsChannelRef.current) {
+        supabase.removeChannel(cardsChannelRef.current)
+      }
+    }
+  }, [boardId, fetchBoardData])
+
+  const handleAddColumn = async () => {
+    if (!newColumnTitle.trim()) return
+    
+    try {
+      const maxPosition = columns.length > 0 ? Math.max(...columns.map(c => c.position)) : -1
+      
+      const { error } = await supabase
+        .from('columns')
+        .insert({
+          board_id: boardId,
+          title: newColumnTitle.trim(),
+          position: maxPosition + 1,
+        })
+      
+      if (error) throw error
+      
+      setNewColumnTitle('')
+      setIsAddingColumn(false)
+    } catch (err) {
+      console.error('Error adding column:', err)
+      alert('Failed to add column')
+    }
+  }
+
+  const handleAddCard = async (columnId, title) => {
+    try {
+      const columnCards = cards.filter(c => c.column_id === columnId)
+      const maxPosition = columnCards.length > 0 ? Math.max
