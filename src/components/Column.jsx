@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Trash2 } from "lucide-react";
+import { useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import Card from "@/components/Card";
 import AddCardButton from "@/components/AddCardButton";
 
 export default function Column({ column, cards }) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
+
+  const columnCards = cards.filter((card) => card.column_id === column.id);
+  const cardIds = columnCards.map((card) => card.id);
+
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -39,7 +48,10 @@ export default function Column({ column, cards }) {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 flex flex-col min-w-[300px] max-w-[300px] h-fit max-h-[calc(100vh-12rem)]">
+    <div
+      ref={setNodeRef}
+      className="bg-gray-800 rounded-lg p-4 flex flex-col min-w-[300px] max-w-[300px] h-fit max-h-[calc(100vh-12rem)]"
+    >
       <div className="flex items-center justify-between mb-4">
         {isEditing ? (
           <input
@@ -68,13 +80,13 @@ export default function Column({ column, cards }) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 mb-4">
-        {cards
-          .filter((card) => card.column_id === column.id)
-          .map((card) => (
+      <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+        <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+          {columnCards.map((card) => (
             <Card key={card.id} card={card} />
           ))}
-      </div>
+        </div>
+      </SortableContext>
 
       <AddCardButton columnId={column.id} />
     </div>
