@@ -317,4 +317,114 @@ export default function Dashboard() {
                       className="text-slate-400 hover:text-red-400 transition-colors"
                       title="Delete board"
                     >
-                
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {board.description && (
+                  <p className="text-slate-400 text-sm mb-4 line-clamp-2">
+                    {board.description}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-4">
+                  <span>Created {formatDate(board.created_at)}</span>
+                  {board.owner_id !== user?.id && (
+                    <span className="px-2 py-0.5 bg-slate-700 rounded text-slate-300">Shared</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => navigate(`/board/${board.id}`)}
+                  className="w-full px-4 py-2 bg-slate-700 hover:bg-[#0ea5e9] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Open Board
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Create New Board</h3>
+            <form onSubmit={createBoard}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-slate-300 mb-2">Board Name</label>
+                <input
+                  type="text"
+                  value={newBoardName}
+                  onChange={(e) => setNewBoardName(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]"
+                  placeholder="e.g. Product Roadmap"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-300 mb-2">Description (optional)</label>
+                <textarea
+                  value={newBoardDescription}
+                  onChange={(e) => setNewBoardDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#0ea5e9] resize-none"
+                  placeholder="What's this board for?"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setNewBoardName('')
+                    setNewBoardDescription('')
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !newBoardName.trim()}
+                  className="flex-1 px-4 py-2 bg-[#0ea5e9] hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  {creating ? 'Creating...' : 'Create Board'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Board?</h3>
+            <p className="text-slate-400 text-sm mb-6">
+              This will permanently delete the board and all its columns and cards. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteBoard(deleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
