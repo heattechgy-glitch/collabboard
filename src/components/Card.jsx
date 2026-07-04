@@ -1,10 +1,27 @@
 import { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function Card({ card, columnId }) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(card.title || "");
   const [description, setDescription] = useState(card.description || "");
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: card.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -47,6 +64,8 @@ export default function Card({ card, columnId }) {
   if (isEditing) {
     return (
       <div
+        ref={setNodeRef}
+        style={style}
         id={card.id}
         className="bg-zinc-800 rounded-lg shadow-lg p-4 mb-3 border border-zinc-700"
       >
@@ -87,6 +106,10 @@ export default function Card({ card, columnId }) {
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       id={card.id}
       onDoubleClick={handleDoubleClick}
       className="bg-zinc-800 rounded-lg shadow-lg p-4 mb-3 border border-zinc-700 hover:border-zinc-600 cursor-pointer transition-colors"
