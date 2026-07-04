@@ -4,7 +4,7 @@ import AuthPage from './pages/AuthPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import BoardView from './pages/BoardView.jsx';
 import Navbar from './components/Navbar.jsx';
-import { useAuth } from './context/AuthContext.jsx';
+import { useAuth } from './contexts/AuthContext.jsx';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
